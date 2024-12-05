@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Educational Website</title>
+    <title>Educational Website with Tabs</title>
     <style>
         body {
             margin: 0;
@@ -23,6 +23,32 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             background-color: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tabs {
+            display: flex;
+            overflow-x: auto;
+            background-color: #eee;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #ddd;
+            margin-right: 5px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            z-index: 1;
         }
 
         .browser-header {
@@ -31,28 +57,6 @@
             display: flex;
             align-items: center;
             border-bottom: 1px solid #ccc;
-        }
-
-        .browser-buttons {
-            display: flex;
-            gap: 5px;
-        }
-
-        .browser-button {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background-color: #ff5f57;
-            border: none;
-            margin-right: 10px;
-        }
-
-        .browser-button.yellow {
-            background-color: #ffbd2e;
-        }
-
-        .browser-button.green {
-            background-color: #28c840;
         }
 
         .address-bar {
@@ -78,12 +82,23 @@
         }
 
         .browser-content {
-            height: 400px;
+            flex-grow: 1;
             padding: 15px;
             overflow-y: auto;
             border-bottom-left-radius: 10px;
             border-bottom-right-radius: 10px;
             background-color: #f9f9f9;
+            position: relative;
+        }
+
+        .iframe-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .iframe-container.active {
+            display: block;
         }
 
         iframe {
@@ -96,41 +111,79 @@
 <body>
 
     <div class="browser">
+        <div class="tabs" id="tabs">
+            <!-- Tabs will be dynamically added here -->
+        </div>
         <div class="browser-header">
-            <div class="browser-buttons">
-                <button class="browser-button red"></button>
-                <button class="browser-button yellow"></button>
-                <button class="browser-button green"></button>
-            </div>
             <input type="text" id="addressBar" class="address-bar" placeholder="Enter URL...">
-            <button class="fetch-button" onclick="fetchPage()">Go</button>
+            <button class="fetch-button" onclick="createNewTab()">New Tab</button>
         </div>
         <div class="browser-content" id="browserContent">
-            <!-- Rendered content will be loaded here -->
+            <!-- Iframes for each tab will be added here -->
         </div>
     </div>
 
     <script>
-        function fetchPage() {
+        let tabCount = 0; // Counter for tabs
+        let activeTabId = null;
+
+        function createNewTab() {
             const url = document.getElementById('addressBar').value;
-            const browserContent = document.getElementById('browserContent');
 
             if (!url) {
                 alert('Please enter a URL!');
                 return;
             }
 
-            // Fetch the page content using your proxy API
-            fetch(`https://node-make-proxy.onrender.com/?url=${encodeURIComponent(url)}`)
+            // Create a new tab
+            const tabsContainer = document.getElementById('tabs');
+            const newTabId = `tab_${++tabCount}`;
+            const tab = document.createElement('div');
+            tab.className = 'tab';
+            tab.id = newTabId;
+            tab.innerText = `Tab ${tabCount}`;
+            tab.onclick = () => switchTab(newTabId);
+            tabsContainer.appendChild(tab);
+
+            // Create a corresponding iframe container
+            const browserContent = document.getElementById('browserContent');
+            const iframeContainer = document.createElement('div');
+            iframeContainer.className = 'iframe-container';
+            iframeContainer.id = `${newTabId}_content`;
+            iframeContainer.innerHTML = `<iframe srcdoc="<p>Loading...</p>"></iframe>`;
+            browserContent.appendChild(iframeContainer);
+
+            // Load content for the new tab
+            fetchPage(url, newTabId);
+        }
+
+        function fetchPage(url, tabId) {
+            fetch(`https://node-make-proxy.onrender.com/proxy?url=${encodeURIComponent(url)}`)
                 .then(response => response.text())
                 .then(data => {
-                    // Display the fetched content inside the browser window
-                    browserContent.innerHTML = `<iframe srcdoc="${data}"></iframe>`;
+                    const iframeContainer = document.getElementById(`${tabId}_content`);
+                    const iframe = iframeContainer.querySelector('iframe');
+                    iframe.srcdoc = data;
                 })
                 .catch(error => {
-                    browserContent.innerHTML = '<p>Error loading page.</p>';
+                    const iframeContainer = document.getElementById(`${tabId}_content`);
+                    iframeContainer.innerHTML = '<p>Error loading page.</p>';
                     console.error('Error:', error);
                 });
+
+            // Switch to the new tab automatically
+            switchTab(tabId);
+        }
+
+        function switchTab(tabId) {
+            // Deactivate all tabs and iframes
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.iframe-container').forEach(iframe => iframe.classList.remove('active'));
+
+            // Activate the selected tab and iframe
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById(`${tabId}_content`).classList.add('active');
+            activeTabId = tabId;
         }
     </script>
 
